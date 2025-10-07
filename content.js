@@ -5,12 +5,13 @@ class SanGaAnalyzer {
   constructor() {
     this.config = {
       enabled: true,
-      autoScroll: true,
+      autoScroll: true,  // 자동 스크롤 기본값
       profitMargin: 6.5,
       theme: 'light'
     };
     this.propertyData = [];
     this.ui = null;
+    this.scrolling = false;  // 스크롤 상태 추가
     this.init();
   }
 
@@ -19,6 +20,11 @@ class SanGaAnalyzer {
     this.detectSite();
     this.injectUI();
     this.startObserving();
+    
+    // 🆕 초기 자동 스크롤 실행
+    if (this.config.autoScroll && this.config.enabled) {
+      setTimeout(() => this.autoScroll(), 2000);
+    }
   }
 
   async loadConfig() {
@@ -34,6 +40,63 @@ class SanGaAnalyzer {
 
   async saveConfig() {
     return chrome.storage.local.set({ config: this.config });
+  }
+
+  // 🆕 자동 스크롤 함수
+  async autoScroll() {
+    if (!this.config.autoScroll || this.scrolling) {
+      console.log('⏸️ 자동 스크롤 비활성화 또는 이미 실행 중');
+      return;
+    }
+
+    const container = this.getScrollContainer();
+    if (!container) {
+      console.log('❌ 스크롤 컨테이너를 찾을 수 없습니다');
+      return;
+    }
+
+    this.scrolling = true;
+    console.log('🚀 자동 스크롤 시작...');
+
+    let scrollCount = 0;
+    const maxScrolls = 100;
+    const scrollDelay = 400;
+    const scrollAmount = 800;
+
+    return new Promise((resolve) => {
+      const interval = setInterval(() => {
+        const currentScroll = container.scrollTop;
+        const maxScroll = container.scrollHeight - container.clientHeight;
+        
+        // 로딩 중인 항목 확인
+        const loadingItems = document.querySelectorAll('.item_inner.is-loading');
+        const hasLoading = loadingItems.length > 0;
+        
+        // 종료 조건
+        if ((currentScroll >= maxScroll - 10 && !hasLoading) || scrollCount >= maxScrolls) {
+          clearInterval(interval);
+          this.scrolling = false;
+          console.log(`✅ 자동 스크롤 완료: ${scrollCount}회, 매물 ${this.propertyData.length}개`);
+          resolve();
+          return;
+        }
+        
+        // 스크롤 실행
+        container.scrollTop = currentScroll + scrollAmount;
+        scrollCount++;
+        
+        if (scrollCount % 10 === 0) {
+          console.log(`📜 스크롤 진행중... ${scrollCount}/${maxScrolls}`);
+        }
+      }, scrollDelay);
+    });
+  }
+
+  // 🆕 스크롤 컨테이너 찾기
+  getScrollContainer() {
+    return document.querySelector('#list_body') || 
+           document.querySelector('.item_list--article') ||
+           document.querySelector('.map_fixed_area_inner');
   }
 
   detectSite() {
@@ -342,7 +405,7 @@ class SanGaUI {
       </div>
 
       <div class="sanga-controls" style="padding: 16px; background: #f8f9fa; border-bottom: 1px solid #e9ecef;">
-        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
           <button class="sanga-btn" data-action="analyze" style="
             flex: 1;
             padding: 10px 16px;
@@ -369,6 +432,46 @@ class SanGaUI {
           ">
             💾 데이터 복사
           </button>
+        </div>
+        
+        <!-- 🆕 자동 스크롤 토글 -->
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: white; border-radius: 8px;">
+          <span style="font-size: 13px; color: #666; font-weight: 600;">🔄 자동 스크롤</span>
+          <label class="toggle-switch" style="
+            position: relative;
+            display: inline-block;
+            width: 48px;
+            height: 24px;
+          ">
+            <input type="checkbox" id="auto-scroll-toggle" ${this.analyzer.config.autoScroll ? 'checked' : ''} style="
+              opacity: 0;
+              width: 0;
+              height: 0;
+            ">
+            <span class="slider" style="
+              position: absolute;
+              cursor: pointer;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              background-color: ${this.analyzer.config.autoScroll ? '#667eea' : '#ccc'};
+              transition: 0.3s;
+              border-radius: 24px;
+            ">
+              <span style="
+                position: absolute;
+                content: '';
+                height: 18px;
+                width: 18px;
+                left: ${this.analyzer.config.autoScroll ? '26px' : '3px'};
+                bottom: 3px;
+                background-color: white;
+                transition: 0.3s;
+                border-radius: 50%;
+              "></span>
+            </span>
+          </label>
         </div>
       </div>
 
@@ -450,6 +553,29 @@ class SanGaUI {
     const exportBtn = this.container.querySelector('[data-action="export"]');
     exportBtn.addEventListener('click', () => {
       this.exportData();
+    });
+
+    // 🆕 자동 스크롤 토글 이벤트
+    const autoScrollToggle = this.container.querySelector('#auto-scroll-toggle');
+    const slider = this.container.querySelector('.slider');
+    const knob = slider.querySelector('span');
+    
+    autoScrollToggle.addEventListener('change', async (e) => {
+      const enabled = e.target.checked;
+      this.analyzer.config.autoScroll = enabled;
+      
+      // UI 업데이트
+      slider.style.backgroundColor = enabled ? '#667eea' : '#ccc';
+      knob.style.left = enabled ? '26px' : '3px';
+      
+      // 설정 저장
+      await this.analyzer.saveConfig();
+      console.log(`🔄 자동 스크롤: ${enabled ? 'ON' : 'OFF'}`);
+      
+      // 켜면 즉시 실행
+      if (enabled) {
+        setTimeout(() => this.analyzer.autoScroll(), 500);
+      }
     });
   }
 
