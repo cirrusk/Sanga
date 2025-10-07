@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SanGa Pro 설정</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      width: 380px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .header {
+      padding: 24px 20px;
+      text-align: center;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .header p {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 20px;
+    }
+
+    .setting-group {
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+      backdrop-filter: blur(10px);
+    }
+
+    .setting-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .setting-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .setting-label {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .setting-description {
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 4px;
+    }
+
+    .toggle-switch {
+      position: relative;
+      width: 48px;
+      height: 24px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .toggle-switch.active {
+      background: #4CAF50;
+    }
+
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 20px;
+      height: 20px;
+      background: white;
+      border-radius: 50%;
+      transition: all 0.3s;
+    }
+
+    .toggle-switch.active::after {
+      left: 26px;
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="number"] {
+      width: 80px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.9);
+      color: #333;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .unit {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .stats {
+      background: rgba(255,255,255,0.95);
+      color: #333;
+      border-radius: 12px;
+      padding: 16px;
+      margin-top: 20px;
+    }
+
+    .stats h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #667eea;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f0f0f0;
+    }
+
+    .stat-row:last-child {
+      border-bottom: none;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .stat-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .footer {
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 12px;
+      opacity: 0.8;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 10px;
+      background: white;
+      color: #667eea;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 16px;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .success-message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #4CAF50;
+      color: white;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      transform: translateX(400px);
+      transition: transform 0.3s;
+      z-index: 1000;
+    }
+
+    .success-message.show {
+      transform: translateX(0);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🏠 SanGa Pro</h1>
+    <p>부동산 투자 분석 설정</p>
+  </div>
+
+  <div class="content">
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">기능 활성화</div>
+          <div class="setting-description">평단가 계산 기능 켜기/끄기</div>
+        </div>
+        <div class="toggle-switch active" id="toggle-enabled"></div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">자동 스크롤</div>
+          <div class="setting-description">새 매물 자동 스크롤</div>
+        </div>
+        <div class="toggle-switch" id="toggle-scroll"></div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">수익률 계산 기준</div>
+          <div class="setting-description">전세 전환율 설정</div>
+        </div>
+        <div class="input-group">
+          <input type="number" id="profit-margin" value="6.5" step="0.1" min="0" max="20">
+          <span class="unit">%</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="setting-group">
+      <div class="setting-item">
+        <div>
+          <div class="setting-label">테마</div>
+          <div class="setting-description">다크모드 / 라이트모드</div>
+        </div>
+        <div class="toggle-switch" id="toggle-theme"></div>
+      </div>
+    </div>
+
+    <button class="btn" id="save-btn">💾 설정 저장</button>
+
+    <div class="stats">
+      <h3>📊 사용 통계</h3>
+      <div class="stat-row">
+        <span class="stat-label">분석한 매물 수</span>
+        <span class="stat-value" id="total-analyzed">0</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">마지막 업데이트</span>
+        <span class="stat-value" id="last-update">-</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">버전</span>
+        <span class="stat-value">2.0.0</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Made with ❤️ by SanGa Team
+  </div>
+
+  <div class="success-message" id="success-msg">
+    ✅ 설정이 저장되었습니다!
+  </div>
+
+  <script>
+    // 설정 로드
+    chrome.storage.local.get(['config', 'stats'], (result) => {
+      const config = result.config || {
+        enabled: true,
+        autoScroll: false,
+        profitMargin: 6.5,
+        theme: 'light'
+      };
+
+      const stats = result.stats || {
+        totalAnalyzed: 0,
+        lastUpdate: null
+      };
+
+      // UI 업데이트
+      document.getElementById('toggle-enabled').classList.toggle('active', config.enabled);
+      document.getElementById('toggle-scroll').classList.toggle('active', config.autoScroll);
+      document.getElementById('toggle-theme').classList.toggle('active', config.theme === 'dark');
+      document.getElementById('profit-margin').value = config.profitMargin;
+
+      // 통계 업데이트
+      document.getElementById('total-analyzed').textContent = stats.totalAnalyzed.toLocaleString();
+      document.getElementById('last-update').textContent = stats.lastUpdate 
+        ? new Date(stats.lastUpdate).toLocaleString('ko-KR')
+        : '-';
+    });
+
+    // 토글 스위치 이벤트
+    document.querySelectorAll('.toggle-switch').forEach(toggle => {
+      toggle.addEventListener('click', () => {
+        toggle.classList.toggle('active');
+      });
+    });
+
+    // 저장 버튼
+    document.getElementById('save-btn').addEventListener('click', () => {
+      const config = {
+        enabled: document.getElementById('toggle-enabled').classList.contains('active'),
+        autoScroll: document.getElementById('toggle-scroll').classList.contains('active'),
+        profitMargin: parseFloat(document.getElementById('profit-margin').value),
+        theme: document.getElementById('toggle-theme').classList.contains('active') ? 'dark' : 'light'
+      };
+
+      chrome.storage.local.set({ config }, () => {
+        // 성공 메시지 표시
+        const msg = document.getElementById('success-msg');
+        msg.classList.add('show');
+        setTimeout(() => {
+          msg.classList.remove('show');
+        }, 2000);
+
+        // 활성 탭에 메시지 전송
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (tabs[0]) {
+            chrome.tabs.sendMessage(tabs[0].id, {
+              type: 'CONFIG_UPDATED',
+              config: config
+            });
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>

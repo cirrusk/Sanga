@@ -1,0 +1,314 @@
+/* SanGa Pro - Content Styles */
+
+/* 전역 스타일 오버라이드 방지 */
+#sanga-pro-panel * {
+  all: revert;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* 메인 패널 애니메이션 */
+#sanga-pro-panel {
+  animation: slideInRight 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateY(-50%) translateX(500px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(-50%) translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 스크롤바 커스터마이징 */
+#sanga-pro-panel .sanga-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+#sanga-pro-panel .sanga-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+#sanga-pro-panel .sanga-content::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 10px;
+}
+
+#sanga-pro-panel .sanga-content::-webkit-scrollbar-thumb:hover {
+  background: #764ba2;
+}
+
+/* 버튼 호버 효과 */
+.sanga-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  transition: all 0.3s ease;
+}
+
+.sanga-btn:active {
+  transform: translateY(0);
+}
+
+/* 통계 카드 애니메이션 */
+.stat-card {
+  animation: fadeInUp 0.5s ease;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 가격 태그 스타일 */
+.sanga-price-tag {
+  animation: fadeIn 0.3s ease;
+  display: inline-flex !important;
+  align-items: center;
+  white-space: nowrap;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+
+/* 테이블 행 호버 */
+#sanga-pro-panel table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+#sanga-pro-panel table tbody tr:hover {
+  background-color: #f8f9fa !important;
+}
+
+/* 로딩 스피너 */
+.sanga-loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 닫기 버튼 호버 */
+#sanga-close:hover {
+  background: rgba(255, 255, 255, 0.3) !important;
+  transform: rotate(90deg);
+  transition: all 0.3s ease;
+}
+
+/* 다크모드 지원 */
+#sanga-pro-panel.dark-mode {
+  background: #1a1a2e;
+  color: #eee;
+}
+
+#sanga-pro-panel.dark-mode .sanga-content {
+  background: #16213e;
+}
+
+#sanga-pro-panel.dark-mode .stat-card {
+  opacity: 0.95;
+}
+
+/* 반응형 디자인 */
+@media (max-width: 480px) {
+  #sanga-pro-panel {
+    width: 95vw !important;
+    right: 2.5vw !important;
+  }
+}
+
+/* 네이버 부동산 특화 스타일 */
+.item_inner .sanga-price-tag {
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+/* 툴팁 스타일 */
+.sanga-tooltip {
+  position: relative;
+  cursor: help;
+}
+
+.sanga-tooltip::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.9);
+  color: white;
+  font-size: 12px;
+  border-radius: 6px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 1000;
+}
+
+.sanga-tooltip:hover::after {
+  opacity: 1;
+}
+
+/* 뱃지 스타일 */
+.sanga-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.sanga-badge.success {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+}
+
+.sanga-badge.warning {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.sanga-badge.info {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+/* 경매 사이트 특화 */
+.auction-highlight {
+  position: relative;
+  padding-left: 12px;
+}
+
+.auction-highlight::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 2px;
+}
+
+/* 페이드인 애니메이션 */
+.fade-in {
+  animation: fadeIn 0.5s ease;
+}
+
+/* 슬라이드 업 애니메이션 */
+.slide-up {
+  animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* 플로팅 액션 버튼 */
+.sanga-fab {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 999998;
+}
+
+.sanga-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.6);
+}
+
+.sanga-fab::after {
+  content: '🏠';
+  font-size: 28px;
+}
+
+/* 미니멀 모드 */
+#sanga-pro-panel.minimal {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+#sanga-pro-panel.minimal .sanga-header,
+#sanga-pro-panel.minimal .sanga-controls,
+#sanga-pro-panel.minimal .sanga-content {
+  display: none;
+}
+
+/* 알림 배지 */
+.notification-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ff4757;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
