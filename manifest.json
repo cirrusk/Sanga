@@ -1,21 +1,44 @@
 {
   "manifest_version": 3,
-  "name": "SanGa Pro - 부동산 투자 분석기",
-  "description": "AI 기반 부동산 평단가 분석 및 투자 수익률 계산 도구",
+  "name": "SanGa - 상가 분석 도우미",
   "version": "2.0.0",
+  "description": "네이버 부동산 및 경매 사이트 상가 매물 분석 도구",
+  
   "permissions": [
     "storage",
     "activeTab",
     "scripting"
   ],
+  
   "host_permissions": [
-    "https://new.land.naver.com/*",
-    "https://m.land.naver.com/*",
-    "https://www.auction1.co.kr/*",
-    "https://www.tankauction.com/*",
-    "https://asil.kr/*",
-    "https://myfranchise.kr/*"
+    "https://*.land.naver.com/*",
+    "https://*.auction1.co.kr/*",
+    "https://*.tankauction.com/*",
+    "https://*.asil.kr/*",
+    "https://*.myfranchise.kr/*"
   ],
+  
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  
+  "content_scripts": [
+    {
+      "matches": [
+        "https://new.land.naver.com/*",
+        "https://m.land.naver.com/*",
+        "https://*.auction1.co.kr/*",
+        "https://*.tankauction.com/*",
+        "https://*.asil.kr/*",
+        "https://*.myfranchise.kr/*"
+      ],
+      "js": ["ui.js", "contents.js"],
+      "css": ["styles.css"],
+      "run_at": "document_end"
+    }
+  ],
+  
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -24,36 +47,17 @@
       "128": "icons/icon128.png"
     }
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://new.land.naver.com/*",
-        "https://m.land.naver.com/*",
-        "https://www.auction1.co.kr/*",
-        "https://www.tankauction.com/*",
-        "https://asil.kr/*",
-        "https://myfranchise.kr/*"
-      ],
-      "js": ["content.js"],
-      "css": ["content.css"],
-      "run_at": "document_end"
-    }
-  ],
-  "background": {
-    "service_worker": "background.js"
-  },
-  "web_accessible_resources": [
-    {
-      "resources": [
-        "assets/*",
-        "icons/*"
-      ],
-      "matches": ["<all_urls>"]
-    }
-  ],
+  
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/*", "icons/*"],
+      "matches": ["<all_urls>"]
+    }
+  ]
 }
