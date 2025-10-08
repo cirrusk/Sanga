@@ -18,19 +18,59 @@ let datalength1 = 0;
 let datalength2 = 0;
 let tableshowstatus = false;
 
-// ===== 설정 관리 함수 =====
+// ===== 설정 관리 함수 (안전 버전) =====
 function getConfig(callback) {
-  chrome.storage.local.get(['config'], (result) => {
-    const config = result.config || {
+  try {
+    // Chrome API 유효성 검사
+    if (!chrome || !chrome.storage || !chrome.storage.local) {
+      console.warn('Chrome storage not available, using defaults');
+      callback({
+        onoffstatus: true,
+        autoScroll: true,
+        contiStatus: false,
+        floorsorting: true,
+        dangaAsc: true,
+        percentMargin: 6.5
+      });
+      return;
+    }
+    
+    chrome.storage.local.get(['config'], (result) => {
+      // Runtime 오류 체크
+      if (chrome.runtime && chrome.runtime.lastError) {
+        console.warn('Storage error:', chrome.runtime.lastError);
+        callback({
+          onoffstatus: true,
+          autoScroll: true,
+          contiStatus: false,
+          floorsorting: true,
+          dangaAsc: true,
+          percentMargin: 6.5
+        });
+        return;
+      }
+      
+      const config = result.config || {
+        onoffstatus: true,
+        autoScroll: true,
+        contiStatus: false,
+        floorsorting: true,
+        dangaAsc: true,
+        percentMargin: 6.5
+      };
+      callback(config);
+    });
+  } catch (error) {
+    console.warn('getConfig error:', error.message);
+    callback({
       onoffstatus: true,
       autoScroll: true,
       contiStatus: false,
       floorsorting: true,
       dangaAsc: true,
       percentMargin: 6.5
-    };
-    callback(config);
-  });
+    });
+  }
 }
 
 function saveConfig(config, callback) {
@@ -147,7 +187,7 @@ function createMainControlPanel() {
     align-items: center;
     gap: 8px;
   `;
-  title.innerHTML = '🏠 <span>산가</span>';
+  title.innerHTML = '🏠 <span>상가</span>';
   panel.appendChild(title);
   
   // 1. 프로그램 ON/OFF 토글
@@ -169,7 +209,7 @@ function createMainControlPanel() {
       
       updateConfig({ onoffstatus });
     }
-  );
+    );
   panel.appendChild(programToggle);
   
   // 2. 오토스크롤 토글
@@ -183,9 +223,9 @@ function createMainControlPanel() {
       SangaUI.showNotification(
         autoScroll ? '오토스크롤 활성화' : '오토스크롤 비활성화',
         'success'
-      );
+        );
     }
-  );
+    );
   panel.appendChild(scrollToggle);
   
   // 3. 연속 처리 토글
@@ -202,7 +242,7 @@ function createMainControlPanel() {
         resetAllData();
       }
     }
-  );
+    );
   panel.appendChild(contiToggle);
   
   // 4. 층순/향순 토글
@@ -213,7 +253,7 @@ function createMainControlPanel() {
     function(e) {
       floorsorting = e.target.checked;
       sortToggle.querySelector('.sanga-toggle-label').textContent = 
-        floorsorting ? '층순' : '향순';
+      floorsorting ? '층순' : '향순';
       updateConfig({ floorsorting });
       
       // 테이블이 열려있으면 새로고침
@@ -221,7 +261,7 @@ function createMainControlPanel() {
         refreshTable();
       }
     }
-  );
+    );
   panel.appendChild(sortToggle);
   
   // 5. 단가 정렬 토글
@@ -238,7 +278,7 @@ function createMainControlPanel() {
         refreshTable();
       }
     }
-  );
+    );
   panel.appendChild(dangaToggle);
   
   // 구분선
@@ -263,7 +303,7 @@ function createMainControlPanel() {
         }
       }
     }
-  );
+    );
   panel.appendChild(marginGroup);
   
   // 구분선
@@ -395,151 +435,275 @@ function startPropertyExtraction() {
 
 // ===== 네이버 부동산 데이터 추출 =====
 function extractNaverLandData() {
-  console.log('Extracting Naver Land data...');
+  console.log('🔍 네이버 부동산 데이터 추출 시작...');
+  
+  // 연속처리가 아니면 초기화
+  if (!contiStatus) {
+    resetAllData();
+  }
+  
+  let processedCount = 0;
   
   const observer = new MutationObserver(() => {
     if (!onoffstatus) return;
     
-    // 월세/전세 데이터 추출
-    const rentItems = document.querySelectorAll('.item_link');
-    rentItems.forEach((item, index) => {
-      if (index < datalength1) return; // 이미 처리된 항목
-      
-      extractRentItem(item);
+    // 매물 아이템 찾기
+    const items = document.querySelectorAll('.item_link');
+    
+    items.forEach((item, index) => {
+      try {
+        // 이미 처리한 아이템은 스킵
+        if (item.hasAttribute('data-sanga-processed')) return;
+        item.setAttribute('data-sanga-processed', 'true');
+        
+        // 거래 유형 (매매/월세/전세)
+        const typeEl = item.querySelector('.price_line .type');
+        if (!typeEl) return;
+        const tradeType = typeEl.textContent.trim();
+        
+        // 가격
+        const priceEl = item.querySelector('.price_line .price');
+        if (!priceEl) return;
+        const priceText = priceEl.textContent.trim();
+        
+        // 면적 및 층 정보
+        const specEl = item.querySelector('.info_area .spec');
+        if (!specEl) return;
+        const specText = specEl.textContent.trim();
+        
+        // 면적 추출: "175/108m²" 형식
+        const areaMatch = specText.match(/(\d+)\/(\d+)m²/);
+        if (!areaMatch) return;
+        const area = parseFloat(areaMatch[2]); // 전용면적 (108m²)
+        
+        // 층 정보 추출: "3/10층"
+        const floorMatch = specText.match(/(\d+)\/(\d+)층/);
+        const currentFloor = floorMatch ? floorMatch[1] : '0';
+        const totalFloor = floorMatch ? floorMatch[2] : '0';
+        
+        // 향 정보 추출
+        const directionMatch = specText.match(/(동|서|남|북|남동|남서|북동|북서)향/);
+        const direction = directionMatch ? directionMatch[1] : '-';
+        
+        console.log(`매물 ${index + 1}: ${tradeType} ${priceText}, ${area}m², ${currentFloor}/${totalFloor}층`);
+        
+        // 매매인 경우
+        if (tradeType === '매매') {
+          const price = parsePrice(priceText);
+          if (price === 0 || area === 0) return;
+          
+          const pricePerPyeong = (price / area).toFixed(1);
+          
+          const data = {
+            구분: '매매',
+            해당층: currentFloor,
+            전체층: totalFloor,
+            향: direction,
+            평단가: parseFloat(pricePerPyeong),
+            전용면적: area,
+            가격: price
+          };
+          
+          tableData2.push(data);
+          tableData2_copy.push(data);
+          processedCount++;
+          
+          console.log('✅ 매매 추출:', data);
+        }
+        // 월세/전세인 경우
+        else if (tradeType === '월세' || tradeType === '전세') {
+          let deposit = 0;
+          let monthlyRent = 0;
+          
+          if (priceText.includes('/')) {
+            // 월세: "1억/500" 형식
+            const parts = priceText.split('/');
+            deposit = parsePrice(parts[0].trim());
+            monthlyRent = parsePrice(parts[1].trim());
+          } else {
+            // 전세: "3억" 형식
+            deposit = parsePrice(priceText);
+            monthlyRent = 0;
+          }
+          
+          if (area === 0) return;
+          
+          // 전환가 계산
+          const convertedPrice = monthlyRent > 0 
+            ? deposit + (monthlyRent * 12 / (percentMargin / 100))
+            : deposit;
+          
+          const pricePerPyeong = (convertedPrice / area).toFixed(1);
+          
+          const data = {
+            구분: monthlyRent > 0 ? '월세' : '전세',
+            해당층: currentFloor,
+            전체층: totalFloor,
+            향: direction,
+            평단가: parseFloat(pricePerPyeong),
+            전용면적: area,
+            보증금: deposit,
+            월세: monthlyRent,
+            전환가: convertedPrice.toFixed(0)
+          };
+          
+          tableData1.push(data);
+          tableData1_copy.push(data);
+          processedCount++;
+          
+          console.log('✅ 월세/전세 추출:', data);
+        }
+        
+      } catch (error) {
+        console.error('❌ 매물 추출 오류:', error, item);
+      }
     });
     
-    // 매매 데이터 추출
-    const saleItems = document.querySelectorAll('.item_link--매매');
-    saleItems.forEach((item, index) => {
-      if (index < datalength2) return;
-      
-      extractSaleItem(item);
-    });
-    
-    // 데이터 카운트 업데이트
-    updateDataCount();
+    if (processedCount > 0) {
+      console.log(`📊 총 ${processedCount}개 매물 처리 완료`);
+      updateDataCount();
+    }
     
     // 오토스크롤
-    if (autoScroll) {
+    if (autoScroll && items.length > 0) {
       setTimeout(() => {
         window.scrollBy(0, 100);
-      }, 300);
+      }, 500);
     }
   });
   
+  // 리스트 컨테이너 감시 시작
   const listContainer = document.querySelector('.list_contents');
   if (listContainer) {
+    console.log('✅ 리스트 컨테이너 발견, 감시 시작');
     observer.observe(listContainer, {
       childList: true,
       subtree: true
     });
+    
+    // 초기 실행 (이미 로드된 매물 처리)
+    setTimeout(() => {
+      const initialItems = document.querySelectorAll('.item_link');
+      console.log(`🔄 초기 매물 ${initialItems.length}개 처리 시작`);
+      observer.takeRecords(); // 기존 레코드 클리어
+      const mutation = new MutationRecord();
+      observer.callback([mutation]);
+    }, 500);
+  } else {
+    console.error('❌ 리스트 컨테이너를 찾을 수 없습니다');
   }
 }
-
 // ===== 월세 항목 추출 =====
-function extractRentItem(item) {
-  try {
-    // 가격 정보
-    const priceText = item.querySelector('.price')?.textContent || '';
-    const deposit = parsePrice(priceText.split('/')[0] || '0');
-    const monthlyRent = parsePrice(priceText.split('/')[1] || '0');
+// function extractRentItem(item) {
+//   try {
+//     // 가격 정보
+//     const priceText = item.querySelector('.price')?.textContent || '';
+//     const deposit = parsePrice(priceText.split('/')[0] || '0');
+//     const monthlyRent = parsePrice(priceText.split('/')[1] || '0');
     
-    // 면적 정보
-    const areaText = item.querySelector('.area')?.textContent || '';
-    const area = parseFloat(areaText.replace(/[^0-9.]/g, '')) || 0;
+//     // 면적 정보
+//     const areaText = item.querySelector('.area')?.textContent || '';
+//     const area = parseFloat(areaText.replace(/[^0-9.]/g, '')) || 0;
     
-    // 층 정보
-    const floorText = item.querySelector('.floor')?.textContent || '';
-    const [currentFloor, totalFloor] = parseFloor(floorText);
+//     // 층 정보
+//     const floorText = item.querySelector('.floor')?.textContent || '';
+//     const [currentFloor, totalFloor] = parseFloor(floorText);
     
-    // 향 정보
-    const direction = item.querySelector('.direction')?.textContent || '-';
+//     // 향 정보
+//     const direction = item.querySelector('.direction')?.textContent || '-';
     
-    // 전환가 계산 (보증금 + (월세 * 12 / 수익률))
-    const convertedPrice = deposit + (monthlyRent * 12 / (percentMargin / 100));
+//     // 전환가 계산 (보증금 + (월세 * 12 / 수익률))
+//     const convertedPrice = deposit + (monthlyRent * 12 / (percentMargin / 100));
     
-    // 평단가 계산
-    const pricePerPyeong = (convertedPrice / area).toFixed(1);
+//     // 평단가 계산
+//     const pricePerPyeong = (convertedPrice / area).toFixed(1);
     
-    const data = {
-      구분: monthlyRent > 0 ? '월세' : '전세',
-      해당층: currentFloor,
-      전체층: totalFloor,
-      향: direction,
-      평단가: parseFloat(pricePerPyeong),
-      전용면적: area,
-      보증금: deposit,
-      월세: monthlyRent,
-      전환가: convertedPrice.toFixed(0)
-    };
+//     const data = {
+//       구분: monthlyRent > 0 ? '월세' : '전세',
+//       해당층: currentFloor,
+//       전체층: totalFloor,
+//       향: direction,
+//       평단가: parseFloat(pricePerPyeong),
+//       전용면적: area,
+//       보증금: deposit,
+//       월세: monthlyRent,
+//       전환가: convertedPrice.toFixed(0)
+//     };
     
-    tableData1.push(data);
-    tableData1_copy.push(data);
-    datalength1 = tableData1.length;
+//     tableData1.push(data);
+//     tableData1_copy.push(data);
+//     datalength1 = tableData1.length;
     
-    console.log('Rent item extracted:', data);
-  } catch (error) {
-    console.error('Error extracting rent item:', error);
-  }
-}
+//     console.log('Rent item extracted:', data);
+//   } catch (error) {
+//     console.error('Error extracting rent item:', error);
+//   }
+// }
 
 // ===== 매매 항목 추출 =====
-function extractSaleItem(item) {
-  try {
-    // 가격 정보
-    const priceText = item.querySelector('.price')?.textContent || '';
-    const price = parsePrice(priceText);
+// function extractSaleItem(item) {
+//   try {
+//     // 가격 정보
+//     const priceText = item.querySelector('.price')?.textContent || '';
+//     const price = parsePrice(priceText);
     
-    // 면적 정보
-    const areaText = item.querySelector('.area')?.textContent || '';
-    const area = parseFloat(areaText.replace(/[^0-9.]/g, '')) || 0;
+//     // 면적 정보
+//     const areaText = item.querySelector('.area')?.textContent || '';
+//     const area = parseFloat(areaText.replace(/[^0-9.]/g, '')) || 0;
     
-    // 층 정보
-    const floorText = item.querySelector('.floor')?.textContent || '';
-    const [currentFloor, totalFloor] = parseFloor(floorText);
+//     // 층 정보
+//     const floorText = item.querySelector('.floor')?.textContent || '';
+//     const [currentFloor, totalFloor] = parseFloor(floorText);
     
-    // 향 정보
-    const direction = item.querySelector('.direction')?.textContent || '-';
+//     // 향 정보
+//     const direction = item.querySelector('.direction')?.textContent || '-';
     
-    // 평단가 계산
-    const pricePerPyeong = (price / area).toFixed(1);
+//     // 평단가 계산
+//     const pricePerPyeong = (price / area).toFixed(1);
     
-    const data = {
-      구분: '매매',
-      해당층: currentFloor,
-      전체층: totalFloor,
-      향: direction,
-      평단가: parseFloat(pricePerPyeong),
-      전용면적: area,
-      가격: price
-    };
+//     const data = {
+//       구분: '매매',
+//       해당층: currentFloor,
+//       전체층: totalFloor,
+//       향: direction,
+//       평단가: parseFloat(pricePerPyeong),
+//       전용면적: area,
+//       가격: price
+//     };
     
-    tableData2.push(data);
-    tableData2_copy.push(data);
-    datalength2 = tableData2.length;
+//     tableData2.push(data);
+//     tableData2_copy.push(data);
+//     datalength2 = tableData2.length;
     
-    console.log('Sale item extracted:', data);
-  } catch (error) {
-    console.error('Error extracting sale item:', error);
-  }
-}
+//     console.log('Sale item extracted:', data);
+//   } catch (error) {
+//     console.error('Error extracting sale item:', error);
+//   }
+// }
 
 // ===== 가격 파싱 유틸리티 =====
 function parsePrice(text) {
-  text = text.replace(/[^0-9.억만]/g, '');
+  if (!text) return 0;
+  
+  text = text.replace(/[^0-9.억만]/g, '').trim();
   
   let price = 0;
   
   if (text.includes('억')) {
     const parts = text.split('억');
-    price += parseFloat(parts[0]) * 10000;
+    const eok = parseFloat(parts[0]) || 0;
+    price = eok * 10000;
+    
     if (parts[1]) {
-      price += parseFloat(parts[1].replace('만', '')) || 0;
+      const man = parseFloat(parts[1].replace('만', '')) || 0;
+      price += man;
     }
   } else if (text.includes('만')) {
-    price = parseFloat(text.replace('만', ''));
+    price = parseFloat(text.replace('만', '')) || 0;
   } else {
-    price = parseFloat(text) || 0;
+    const num = parseFloat(text) || 0;
+    // 숫자만 있는 경우 만원 단위로 가정
+    price = num;
   }
   
   return price;
@@ -569,7 +733,7 @@ function showSummaryTable() {
     return;
   }
   
-  const container = SangaUI.createTableContainer({ top: '50px', left: '410px' });
+  const container = SangaUI.createTableContainer({ top: '180px', left: '410px' });
   container.id = 'sanga-summary-container';
   
   // 헤더
@@ -671,7 +835,7 @@ function createFilterSection() {
     dealTypes,
     '전체',
     () => filterAndDisplayTable()
-  );
+    );
   
   // 층 선택
   const floorOptions = [
@@ -686,7 +850,7 @@ function createFilterSection() {
     floorOptions,
     '전체',
     () => filterAndDisplayTable()
-  );
+    );
   
   section.appendChild(dealSelect);
   section.appendChild(floorSelect);
@@ -733,58 +897,124 @@ function filterAndDisplayTable() {
   refreshTable();
 }
 
-// ===== 요약 테이블 생성 =====
+// ===== 중복 매물 그룹화 개선 =====
+function groupDuplicateProperties(data) {
+  const grouped = new Map();
+  
+  data.forEach(item => {
+    // 면적은 반올림하여 비교 (소수점 차이 무시)
+    const roundedArea = Math.round(item.전용면적);
+    
+    let key;
+    if (item.구분 === '매매') {
+      // 매매: 해당층/면적/가격
+      key = `${item.해당층}|${roundedArea}|${item.가격}`;
+    } else {
+      // 월세/전세: 해당층/면적/보증금/월세
+      const monthlyRent = item.월세 || 0;
+      key = `${item.해당층}|${roundedArea}|${item.보증금}|${monthlyRent}`;
+    }
+    
+    if (grouped.has(key)) {
+      // 이미 존재하는 매물 - 카운트 증가
+      const existing = grouped.get(key);
+      existing.중복건수++;
+      
+      console.log(`🔄 중복 매물 발견: ${item.구분} ${item.해당층}층, ${roundedArea}m², ${existing.중복건수}건`);
+    } else {
+      // 새로운 매물 - 추가
+      grouped.set(key, {
+        ...item,
+        중복건수: 1
+      });
+    }
+  });
+  
+  // 중복 통계 출력
+  const duplicates = Array.from(grouped.values()).filter(item => item.중복건수 > 1);
+  if (duplicates.length > 0) {
+    console.log(`📊 중복 매물 ${duplicates.length}종류 발견 (총 ${duplicates.reduce((sum, item) => sum + item.중복건수, 0)}건)`);
+  }
+  
+  return Array.from(grouped.values());
+}
+
+// ===== 요약표 생성 개선 =====
 function createEnhancedSummaryTable() {
+  // 중복 제거된 데이터 사용
+  const uniqueData1 = groupDuplicateProperties(tableData1);
+  const uniqueData2 = groupDuplicateProperties(tableData2);
+  
   const data = [];
   
   // 1층 데이터
-  const floor1Data = tableData1.filter(item => item.해당층 === '1');
+  const floor1Data = uniqueData1.filter(item => item.해당층 === '1');
   if (floor1Data.length > 0) {
     const prices = floor1Data.map(item => item.평단가);
+    const uniqueCount = floor1Data.length;
+    const totalCount = floor1Data.reduce((sum, item) => sum + item.중복건수, 0);
+    
     data.push({
       구분: '1층',
       최소: Math.min(...prices).toFixed(1),
       평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
       최대: Math.max(...prices).toFixed(1),
-      건수: prices.length
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
     });
   }
   
   // 2층 데이터
-  const floor2Data = tableData1.filter(item => item.해당층 === '2');
+  const floor2Data = uniqueData1.filter(item => item.해당층 === '2');
   if (floor2Data.length > 0) {
     const prices = floor2Data.map(item => item.평단가);
+    const uniqueCount = floor2Data.length;
+    const totalCount = floor2Data.reduce((sum, item) => sum + item.중복건수, 0);
+    
     data.push({
       구분: '2층',
       최소: Math.min(...prices).toFixed(1),
       평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
       최대: Math.max(...prices).toFixed(1),
-      건수: prices.length
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
     });
   }
   
   // 상층 데이터
-  const upperFloorData = tableData1.filter(item => Number(item.해당층) >= 3);
+  const upperFloorData = uniqueData1.filter(item => Number(item.해당층) >= 3);
   if (upperFloorData.length > 0) {
     const prices = upperFloorData.map(item => item.평단가);
+    const uniqueCount = upperFloorData.length;
+    const totalCount = upperFloorData.reduce((sum, item) => sum + item.중복건수, 0);
+    
     data.push({
       구분: '상층',
       최소: Math.min(...prices).toFixed(1),
       평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
       최대: Math.max(...prices).toFixed(1),
-      건수: prices.length
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
     });
   }
   
   // 매매 데이터
-  if (tableData2.length > 0) {
-    const prices = tableData2.map(item => item.평단가);
+  if (uniqueData2.length > 0) {
+    const prices = uniqueData2.map(item => item.평단가);
+    const uniqueCount = uniqueData2.length;
+    const totalCount = uniqueData2.reduce((sum, item) => sum + item.중복건수, 0);
+    
     data.push({
       구분: '매매',
       최소: Math.min(...prices).toFixed(1),
       평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
       최대: Math.max(...prices).toFixed(1),
-      건수: prices.length
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
     });
   }
   
@@ -802,20 +1032,23 @@ function createEnhancedSummaryTable() {
   return table;
 }
 
-// ===== 상세 테이블 생성 =====
+// ===== 상세 테이블 생성 개선 =====
 function createEnhancedDetailTable() {
   const allData = [...tableData1, ...tableData2];
   
+  // 중복 매물 그룹화
+  const groupedData = groupDuplicateProperties(allData);
+  
   // 정렬
   if (floorsorting) {
-    allData.sort((a, b) => {
+    groupedData.sort((a, b) => {
       if (a.해당층 !== b.해당층) {
         return parseInt(a.해당층) - parseInt(b.해당층);
       }
       return dangaAsc ? a.평단가 - b.평단가 : b.평단가 - a.평단가;
     });
   } else {
-    allData.sort((a, b) => {
+    groupedData.sort((a, b) => {
       if (a.향 !== b.향) {
         return a.향.localeCompare(b.향);
       }
@@ -823,22 +1056,39 @@ function createEnhancedDetailTable() {
     });
   }
   
-  const tableData = allData.map(item => {
+  const tableData = groupedData.map(item => {
     const row = {
       구분: item.구분,
       층: `${item.해당층}/${item.전체층}`,
       향: item.향,
       평단가: item.평단가 + '만',
-      면적: item.전용면적 + '㎡'
+      면적: item.전용면적 + 'm²'
     };
     
     if (item.구분 === '매매') {
       row.가격 = item.가격 + '만';
+      // 중복 건수 표시
+      if (item.중복건수 > 1) {
+        row.가격 += ` (${item.중복건수}건)`;
+      }
     } else {
       row.보증금 = item.보증금 + '만';
+      
+      // 월세 칸에 중복 건수 표시
       if (item.월세 > 0) {
         row.월세 = item.월세 + '만';
+        if (item.중복건수 > 1) {
+          row.월세 += ` (${item.중복건수}건)`;
+        }
+      } else {
+        // 전세인 경우
+        if (item.중복건수 > 1) {
+          row.월세 = `전세 (${item.중복건수}건)`;
+        } else {
+          row.월세 = '전세';
+        }
       }
+      
       row.전환가 = item.전환가 + '만';
     }
     
@@ -862,7 +1112,353 @@ function createEnhancedDetailTable() {
         return row.구분 === '매매' ? 'sale-row' : 'rent-row';
       },
       onRowClick: (row) => {
-        console.log('Selected row:', row);
+        console.log('선택된 행:', row);
+      }
+    }
+  );
+  
+  return table;
+}
+
+// ===== 요약표 생성 개선 =====
+function createEnhancedSummaryTable() {
+  // 중복 제거된 데이터 사용
+  const uniqueData1 = groupDuplicateProperties(tableData1);
+  const uniqueData2 = groupDuplicateProperties(tableData2);
+  
+  const data = [];
+  
+  // 1층 데이터
+  const floor1Data = uniqueData1.filter(item => item.해당층 === '1');
+  if (floor1Data.length > 0) {
+    const prices = floor1Data.map(item => item.평단가);
+    const uniqueCount = floor1Data.length;
+    const totalCount = floor1Data.reduce((sum, item) => sum + item.중복건수, 0);
+    
+    data.push({
+      구분: '1층',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
+    });
+  }
+  
+  // 2층 데이터
+  const floor2Data = uniqueData1.filter(item => item.해당층 === '2');
+  if (floor2Data.length > 0) {
+    const prices = floor2Data.map(item => item.평단가);
+    const uniqueCount = floor2Data.length;
+    const totalCount = floor2Data.reduce((sum, item) => sum + item.중복건수, 0);
+    
+    data.push({
+      구분: '2층',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
+    });
+  }
+  
+  // 상층 데이터
+  const upperFloorData = uniqueData1.filter(item => Number(item.해당층) >= 3);
+  if (upperFloorData.length > 0) {
+    const prices = upperFloorData.map(item => item.평단가);
+    const uniqueCount = upperFloorData.length;
+    const totalCount = upperFloorData.reduce((sum, item) => sum + item.중복건수, 0);
+    
+    data.push({
+      구분: '상층',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
+    });
+  }
+  
+  // 매매 데이터
+  if (uniqueData2.length > 0) {
+    const prices = uniqueData2.map(item => item.평단가);
+    const uniqueCount = uniqueData2.length;
+    const totalCount = uniqueData2.reduce((sum, item) => sum + item.중복건수, 0);
+    
+    data.push({
+      구분: '매매',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: uniqueCount === totalCount 
+        ? `${totalCount}건` 
+        : `${totalCount}건 (${uniqueCount}종)`
+    });
+  }
+  
+  const table = SangaUI.createTable(
+    ['구분', '최소', '평균', '최대', '건수'],
+    data,
+    {
+      rowClassifier: (row) => {
+        if (row.구분 === '매매') return 'sale-row';
+        return 'rent-row';
+      }
+    }
+  );
+  
+  return table;
+}
+
+// ===== 상세 테이블 생성 개선 =====
+function createEnhancedDetailTable() {
+  const allData = [...tableData1, ...tableData2];
+  
+  // 중복 매물 그룹화
+  const groupedData = groupDuplicateProperties(allData);
+  
+  // 정렬
+  if (floorsorting) {
+    groupedData.sort((a, b) => {
+      if (a.해당층 !== b.해당층) {
+        return parseInt(a.해당층) - parseInt(b.해당층);
+      }
+      return dangaAsc ? a.평단가 - b.평단가 : b.평단가 - a.평단가;
+    });
+  } else {
+    groupedData.sort((a, b) => {
+      if (a.향 !== b.향) {
+        return a.향.localeCompare(b.향);
+      }
+      return dangaAsc ? a.평단가 - b.평단가 : b.평단가 - a.평단가;
+    });
+  }
+  
+  const tableData = groupedData.map(item => {
+    const row = {
+      구분: item.구분,
+      층: `${item.해당층}/${item.전체층}`,
+      향: item.향,
+      평단가: item.평단가 + '만',
+      면적: item.전용면적 + 'm²'
+    };
+    
+    if (item.구분 === '매매') {
+      row.가격 = item.가격 + '만';
+      // 중복 건수 표시
+      if (item.중복건수 > 1) {
+        row.가격 += ` (${item.중복건수}건)`;
+      }
+    } else {
+      row.보증금 = item.보증금 + '만';
+      
+      // 월세 칸에 중복 건수 표시
+      if (item.월세 > 0) {
+        row.월세 = item.월세 + '만';
+        if (item.중복건수 > 1) {
+          row.월세 += ` (${item.중복건수}건)`;
+        }
+      } else {
+        // 전세인 경우
+        if (item.중복건수 > 1) {
+          row.월세 = `전세 (${item.중복건수}건)`;
+        } else {
+          row.월세 = '전세';
+        }
+      }
+      
+      row.전환가 = item.전환가 + '만';
+    }
+    
+    return row;
+  });
+  
+  // 헤더 동적 생성
+  const headers = ['구분', '층', '향', '평단가', '면적'];
+  if (tableData1.length > 0) {
+    headers.push('보증금', '월세', '전환가');
+  }
+  if (tableData2.length > 0 && tableData1.length === 0) {
+    headers.push('가격');
+  }
+  
+  const table = SangaUI.createTable(
+    headers,
+    tableData,
+    {
+      rowClassifier: (row) => {
+        return row.구분 === '매매' ? 'sale-row' : 'rent-row';
+      },
+      onRowClick: (row) => {
+        console.log('선택된 행:', row);
+      }
+    }
+  );
+  
+  return table;
+}
+// ===== 요약 테이블 생성 =====
+function createEnhancedSummaryTable() {
+  // 중복 제거된 데이터 사용
+  const uniqueData1 = groupDuplicateProperties(tableData1);
+  const uniqueData2 = groupDuplicateProperties(tableData2);
+  
+  const data = [];
+  
+  // 1층 데이터
+  const floor1Data = uniqueData1.filter(item => item.해당층 === '1');
+  if (floor1Data.length > 0) {
+    const prices = floor1Data.map(item => item.평단가);
+    const totalCount = floor1Data.reduce((sum, item) => sum + item.중복건수, 0);
+    data.push({
+      구분: '1층',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: totalCount
+    });
+  }
+  
+  // 2층 데이터
+  const floor2Data = uniqueData1.filter(item => item.해당층 === '2');
+  if (floor2Data.length > 0) {
+    const prices = floor2Data.map(item => item.평단가);
+    const totalCount = floor2Data.reduce((sum, item) => sum + item.중복건수, 0);
+    data.push({
+      구분: '2층',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: totalCount
+    });
+  }
+  
+  // 상층 데이터
+  const upperFloorData = uniqueData1.filter(item => Number(item.해당층) >= 3);
+  if (upperFloorData.length > 0) {
+    const prices = upperFloorData.map(item => item.평단가);
+    const totalCount = upperFloorData.reduce((sum, item) => sum + item.중복건수, 0);
+    data.push({
+      구분: '상층',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: totalCount
+    });
+  }
+  
+  // 매매 데이터
+  if (uniqueData2.length > 0) {
+    const prices = uniqueData2.map(item => item.평단가);
+    const totalCount = uniqueData2.reduce((sum, item) => sum + item.중복건수, 0);
+    data.push({
+      구분: '매매',
+      최소: Math.min(...prices).toFixed(1),
+      평균: (prices.reduce((a, b) => a + b, 0) / prices.length).toFixed(1),
+      최대: Math.max(...prices).toFixed(1),
+      건수: totalCount
+    });
+  }
+  
+  const table = SangaUI.createTable(
+    ['구분', '최소', '평균', '최대', '건수'],
+    data,
+    {
+      rowClassifier: (row) => {
+        if (row.구분 === '매매') return 'sale-row';
+        return 'rent-row';
+      }
+    }
+  );
+  
+  return table;
+}
+
+// ===== 상세 테이블 생성 =====
+// ===== 상세 테이블 생성 =====
+function createEnhancedDetailTable() {
+  const allData = [...tableData1, ...tableData2];
+  
+  // 중복 매물 그룹화
+  const groupedData = groupDuplicateProperties(allData);
+  
+  // 정렬
+  if (floorsorting) {
+    groupedData.sort((a, b) => {
+      if (a.해당층 !== b.해당층) {
+        return parseInt(a.해당층) - parseInt(b.해당층);
+      }
+      return dangaAsc ? a.평단가 - b.평단가 : b.평단가 - a.평단가;
+    });
+  } else {
+    groupedData.sort((a, b) => {
+      if (a.향 !== b.향) {
+        return a.향.localeCompare(b.향);
+      }
+      return dangaAsc ? a.평단가 - b.평단가 : b.평단가 - a.평단가;
+    });
+  }
+  
+  const tableData = groupedData.map(item => {
+    const row = {
+      구분: item.구분,
+      층: `${item.해당층}/${item.전체층}`,
+      향: item.향,
+      평단가: item.평단가 + '만',
+      면적: item.전용면적 + 'm²'
+    };
+    
+    if (item.구분 === '매매') {
+      row.가격 = item.가격 + '만';
+      // 중복 건수 표시
+      if (item.중복건수 > 1) {
+        row.가격 += ` (${item.중복건수}건)`;
+      }
+    } else {
+      row.보증금 = item.보증금 + '만';
+      
+      // 월세 칸에 중복 건수 표시
+      if (item.월세 > 0) {
+        row.월세 = item.월세 + '만';
+        if (item.중복건수 > 1) {
+          row.월세 += ` (${item.중복건수}건)`;
+        }
+      } else {
+        // 전세인 경우
+        if (item.중복건수 > 1) {
+          row.월세 = `(${item.중복건수}건)`;
+        } else {
+          row.월세 = '-';
+        }
+      }
+      
+      row.전환가 = item.전환가 + '만';
+    }
+    
+    return row;
+  });
+  
+  // 헤더 동적 생성
+  const headers = ['구분', '층', '향', '평단가', '면적'];
+  if (tableData1.length > 0) {
+    headers.push('보증금', '월세', '전환가');
+  }
+  if (tableData2.length > 0 && tableData1.length === 0) {
+    headers.push('가격');
+  }
+  
+  const table = SangaUI.createTable(
+    headers,
+    tableData,
+    {
+      rowClassifier: (row) => {
+        return row.구분 === '매매' ? 'sale-row' : 'rent-row';
+      },
+      onRowClick: (row) => {
+        console.log('선택된 행:', row);
       }
     }
   );
@@ -944,7 +1540,7 @@ function openPyeongAnalysisModal() {
         }
       ]
     }
-  );
+    );
   
   document.body.appendChild(modal);
 }
@@ -990,9 +1586,9 @@ function createPyeongAnalysisContent() {
   // 층별 카드 생성
   Object.keys(grouped).sort().forEach(floorGroup => {
     const card = SangaUI.createCard(
-      `${floorGroup} 평형별 분석 (총 ${Object.values(grouped[floorGroup]).reduce((sum, g) => sum + g.count, 0)}건)`,
-      createPyeongTable(grouped[floorGroup])
-    );
+  `${floorGroup} 평형별 분석 (총 ${Object.values(grouped[floorGroup]).reduce((sum, g) => sum + g.count, 0)}건)`,
+  createPyeongTable(grouped[floorGroup])
+  );
     container.appendChild(card);
   });
   
@@ -1055,7 +1651,7 @@ function createPyeongTable(data) {
         return '';
       }
     }
-  );
+    );
 }
 
 // ===== Excel 내보내기 =====
@@ -1256,14 +1852,24 @@ new MutationObserver(() => {
   }
 }).observe(document, { subtree: true, childList: true });
 
-// ===== 에러 핸들링 =====
 window.addEventListener('error', (e) => {
+  // Extension context invalidated 오류는 무시
+if (e.error && e.error.message && e.error.message.includes('Extension context invalidated')) {
+  console.log('Extension reloaded, ignoring context error');
+  e.preventDefault(); // 추가
+  e.stopPropagation(); // 추가
+  return true; // 오류 전파 중단
+}
+  
   console.error('SanGa Error:', e.error);
   
-  // 심각한 에러의 경우 사용자에게 알림
+  // 심각한 에러의 경우에만 사용자에게 알림
   if (e.error && e.error.message) {
     if (e.error.message.includes('SangaUI')) {
-      SangaUI.showNotification('UI 로드 중 오류가 발생했습니다', 'error');
+      // SangaUI가 정의되어 있을 때만 알림 표시
+      if (typeof SangaUI !== 'undefined' && SangaUI.showNotification) {
+        SangaUI.showNotification('UI 로드 중 오류가 발생했습니다', 'error');
+      }
     }
   }
 });

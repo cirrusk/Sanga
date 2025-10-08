@@ -1,0 +1,556 @@
+/* ===== 공통 스타일 ===== */
+:root {
+  --primary-color: #007bff;
+  --secondary-color: #6c757d;
+  --success-color: #28a745;
+  --danger-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  
+  --bg-white: #ffffff;
+  --bg-light: #f8f9fa;
+  --bg-dark: #343a40;
+  
+  --border-color: #dee2e6;
+  --border-radius: 8px;
+  --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  
+  --font-size-sm: 11pt;
+  --font-size-md: 13pt;
+  --font-size-lg: 14pt;
+  
+  --spacing-xs: 5px;
+  --spacing-sm: 10px;
+  --spacing-md: 15px;
+  --spacing-lg: 20px;
+}
+
+/* ===== 컨트롤 패널 ===== */
+.sanga-control-panel {
+  position: fixed;
+  top: 50%;
+  right: 20px;
+  transform: translateY(-50%);
+  background: var(--bg-white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: var(--spacing-md);
+  z-index: 10000;  /* ← 이건 그대로 유지 */
+  min-width: 200px;
+  transition: all 0.3s ease;
+}
+
+.sanga-control-panel:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* ===== 토글 스위치 ===== */
+.sanga-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-xs);
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.sanga-toggle-container:hover {
+  background-color: var(--bg-light);
+}
+
+.sanga-toggle-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: #333;
+  margin-right: var(--spacing-sm);
+}
+
+.sanga-toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 24px;
+}
+
+.sanga-toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.sanga-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--secondary-color);
+  border-radius: 24px;
+  transition: 0.3s;
+}
+
+.sanga-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+
+input:checked + .sanga-toggle-slider {
+  background-color: var(--success-color);
+}
+
+input:checked + .sanga-toggle-slider:before {
+  transform: translateX(24px);
+}
+
+/* ===== 버튼 스타일 ===== */
+.sanga-btn {
+  padding: 8px 16px;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.sanga-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.sanga-btn:active {
+  transform: translateY(0);
+}
+
+.sanga-btn-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.sanga-btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.sanga-btn-secondary {
+  background-color: var(--secondary-color);
+  color: white;
+}
+
+.sanga-btn-success {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.sanga-btn-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.sanga-btn-outline {
+  background-color: transparent;
+  border: 2px solid var(--primary-color);
+  color: var(--primary-color);
+}
+
+.sanga-btn-outline:hover {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.sanga-btn-group {
+  display: flex;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-sm);
+}
+
+/* 중복 건수 표시 스타일 */
+.sanga-table td {
+  position: relative;
+}
+
+.sanga-table td:has-text("건)") {
+  font-weight: 600;
+  color: #007bff;
+}
+
+/* ===== 테이블 스타일 ===== */
+.sanga-table-container {
+  position: fixed;
+  top: 180px;           /* 상단 여백 */
+  bottom: 20px;        /* 하단 여백 */
+  left: 410px;
+  width: 600px;        /* 고정 너비 */
+  background: var(--bg-white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: var(--spacing-md);
+  overflow-y: auto;
+  z-index: 99999;
+  animation: slideIn 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.sanga-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  background: white;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+}
+
+.sanga-table thead {
+  background: linear-gradient(135deg, var(--primary-color), #0056b3);
+  color: white;
+}
+
+.sanga-table th {
+  padding: 12px;
+  text-align: center;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+}
+
+.sanga-table td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sanga-table tbody tr {
+  transition: background-color 0.2s;
+}
+
+.sanga-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.sanga-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 월세/매매 구분 색상 */
+.sanga-table .rent-row {
+  background-color: #fff3cd;
+}
+
+.sanga-table .sale-row {
+  background-color: #d1ecf1;
+}
+
+/* ===== 카드 스타일 ===== */
+.sanga-card {
+  background: var(--bg-white);
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.sanga-card-header {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: #333;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 2px solid var(--primary-color);
+}
+
+.sanga-card-body {
+  color: #666;
+  line-height: 1.6;
+}
+
+/* ===== 입력 필드 ===== */
+.sanga-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: var(--spacing-sm);
+}
+
+.sanga-input-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: #555;
+}
+
+.sanga-input {
+  padding: 8px 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  font-size: var(--font-size-sm);
+  transition: border-color 0.2s;
+}
+
+.sanga-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.sanga-select {
+  padding: 8px 12px;
+  border: 2px solid var(--border-color);
+  border-radius: 6px;
+  font-size: var(--font-size-sm);
+  background-color: white;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.sanga-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+/* ===== 모달/팝업 ===== */
+.sanga-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.2s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sanga-modal {
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  max-width: 90%;
+  max-height: 90%;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sanga-modal-header {
+  padding: var(--spacing-md);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #f8f9fa, white);
+}
+
+.sanga-modal-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+.sanga-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #666;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.sanga-modal-close:hover {
+  background-color: #f8f9fa;
+  color: var(--danger-color);
+}
+
+.sanga-modal-body {
+  padding: var(--spacing-md);
+}
+
+/* ===== 배지/라벨 ===== */
+.sanga-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sanga-badge-primary {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.sanga-badge-success {
+  background-color: var(--success-color);
+  color: white;
+}
+
+.sanga-badge-danger {
+  background-color: var(--danger-color);
+  color: white;
+}
+
+.sanga-badge-warning {
+  background-color: var(--warning-color);
+  color: #333;
+}
+
+/* ===== 툴팁 ===== */
+.sanga-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.sanga-tooltip-text {
+  visibility: hidden;
+  background-color: #333;
+  color: white;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 6px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.sanga-tooltip:hover .sanga-tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ===== 반응형 ===== */
+@media (max-width: 768px) {
+  .sanga-control-panel {
+    right: 10px;
+    min-width: 180px;
+  }
+  
+  .sanga-table-container {
+    max-height: 400px;
+  }
+  
+  .sanga-btn {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
+}
+
+/* ===== 스크롤바 스타일 ===== */
+.sanga-table-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.sanga-table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.sanga-table-container::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 10px;
+}
+
+.sanga-table-container::-webkit-scrollbar-thumb:hover {
+  background: #0056b3;
+}
+
+/* ===== 로딩 애니메이션 ===== */
+.sanga-loading {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border: 3px solid rgba(0, 123, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: var(--primary-color);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ===== 가격 표시 스타일 ===== */
+.sanga-price-tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.sanga-price-tag.rent {
+  background-color: rgba(255, 0, 0, 0.1);
+  color: #dc3545;
+}
+
+.sanga-price-tag.sale {
+  background-color: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+
+/* ===== 하이라이트 효과 ===== */
+.sanga-highlight {
+  animation: highlight 1s ease-out;
+}
+
+@keyframes highlight {
+  0% {
+    background-color: rgba(255, 235, 59, 0.5);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
